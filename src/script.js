@@ -19,16 +19,78 @@ gui.hide()
 const canvas = document.querySelector('canvas.webgl')
 
 const textureLoader = new THREE.TextureLoader();
+
+const particleTexture = textureLoader.load('/textures/particles/3.png');
+
 // Scene
 const scene = new THREE.Scene()
 
 const material = new THREE.MeshStandardMaterial({
     vertexColors: THREE.FaceColors
 });
-material.roughness = 1
-material.metalness = .2
 
 const geometry = new THREE.BoxGeometry(1, 1, 1);
+const particlesMaterial = new THREE.PointsMaterial({
+    size: 0.05,
+    sizeAttenuation: true
+})
+particlesMaterial.transparent = true
+particlesMaterial.alphaMap = particleTexture
+particlesMaterial.vertexColors = true
+
+// custom particles geometry
+const particlesGeometry = new THREE.BufferGeometry();
+const count = 1000000;
+
+const positions = new Float32Array(count * 3);
+const colors = new Float32Array(count * 3)
+
+// particles position & color generator
+const blueRaspberry = [65, 90, 128];
+const enamelBlue = [165, 212, 220];
+
+let firstColor = true;
+let colorI = 0;
+
+const particleColorDecider = bool => bool ? blueRaspberry : enamelBlue;
+
+// let yPosition = 2;
+// if (i === yPosition) {
+//     positions[i] = (Math.random() - 0.5)
+//     yPosition += 3;
+// } else {
+//     positions[i] = (Math.random() - 0.5) * 3.6
+// }
+
+for (let i = 0; i < count * 3; i++) {
+
+    positions[i] = (Math.random() - 0.5) * 200
+
+    // color
+    if (colorI > 2) {
+        colorI = 0;
+        firstColor = !firstColor;
+    }
+
+    colors[i] = particleColorDecider(firstColor)[colorI] / 255
+
+    colorI++;
+}
+
+
+particlesGeometry.setAttribute('position', new THREE.BufferAttribute(positions, 3))
+particlesGeometry.setAttribute('color', new THREE.BufferAttribute(colors, 3))
+
+// Points
+const particles1 = new THREE.Points(particlesGeometry, particlesMaterial)
+particles1.position.set(0, -1.25, 0)
+particles1.rotation.x = Math.PI / 2
+
+const particles2 = new THREE.Points(particlesGeometry, particlesMaterial)
+particles2.position.set(0, 1.25, 0)
+particles2.rotation.x = Math.PI / 2
+
+scene.add(particles1, particles2)
 
 
 const facesDictionary = {
@@ -183,17 +245,14 @@ const camera = new THREE.PerspectiveCamera(75, sizes.width / sizes.height, 0.1, 
 camera.position.x = 53
 camera.position.y = 50
 camera.position.z = 100
+
 scene.add(camera)
-
-
 
 const cameraFolder = gui.addFolder('camera');
 cameraFolder.add(camera.position, 'x').min(-100).max(100).step(1);
 cameraFolder.add(camera.position, 'y').min(-100).max(100).step(1);
 cameraFolder.add(camera.position, 'z').min(-100).max(100).step(1);
 cameraFolder.add(camera.rotation, 'z').min(0).max(1).step(.01).name('rotationZ');
-
-
 
 // Controls
 const controls = new OrbitControls(camera, canvas)
@@ -217,12 +276,34 @@ renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
 
 const clock = new THREE.Clock()
 
+let yPosition = 2;
+
+
+// setTimeout(() => {
+
+// }, 2000)
+
+const newParticlesPosition = new Float32Array(count * 3);
+
+for (let i = 0; i < count * 3; i++) {
+    if (i === yPosition) {
+        newParticlesPosition[i] = (Math.random() - 0.5)
+        yPosition += 3;
+    } else {
+        newParticlesPosition[i] = (Math.random() - 0.5) * 3.6
+    }
+}
+gsap.delayedCall(2, () => {
+    particlesGeometry.attributes.position.needsUpdate = true;
+    particlesGeometry.setAttribute('position', new THREE.BufferAttribute(newParticlesPosition, 3))
+})
+
 const tick = () => {
     const elapsedTime = clock.getElapsedTime();
 
-    level1XGroup.rotation.y = elapsedTime * Math.PI * 0.5
-    level2XGroup.rotation.y = -(elapsedTime * Math.PI * 0.5)
-    level3XGroup.rotation.y = elapsedTime * Math.PI * 0.5
+    // level1XGroup.rotation.y = elapsedTime * Math.PI * 0.5
+    // level2XGroup.rotation.y = -(elapsedTime * Math.PI * 0.5)
+    // level3XGroup.rotation.y = elapsedTime * Math.PI * 0.5
 
     gsap.to(camera.position, {
         duration: 1,
@@ -242,20 +323,9 @@ const tick = () => {
         z: 10
     });
 
-    // if(camera.position.x < 20 && camera.position.y < 20) {
-    //     for (let level = 0; level < 3; level++) {
-    //         for (let row = 0; row < 3; row++) {
-    //             for (let col = 0; col < 3; col++) {
-    //                 const cube = matrix[level][row][col];
-    //                 // cube.position.y = (cube.position.y / 10) * 1.2;
-    //                 // cube.position.z = (cube.position.z / 10) * 1.2;
-    //                 // cube.position.x = (cube.position.x /10) * 1.2;
 
 
-    //             }
-    //         }
-    //     }
-    // }
+
     let levelI = -1;
     for (let level = 0; level < 3; level++) {
         let rowI = -1;
@@ -263,7 +333,7 @@ const tick = () => {
             let colI = -1;
             for (let col = 0; col < 3; col++) {
                 const cube = matrix[level][row][col];
-                cube.rotation.x = elapsedTime * Math.PI * 0.5;
+                // cube.rotation.x = elapsedTime * Math.PI * 0.5;
 
                 gsap.to(cube.position, {
                     duration: 2,
@@ -274,7 +344,7 @@ const tick = () => {
                 gsap.to(cube.position, {
                     duration: 2,
                     delay: .5,
-                    y: levelI * 1.2
+                    y: levelI * 2.5
                 });
 
                 gsap.to(cube.position, {
@@ -291,7 +361,7 @@ const tick = () => {
     }
 
 
-    dancingCube.rotation.z = -(elapsedTime * Math.PI * 0.5)
+    // dancingCube.rotation.z = -(elapsedTime * Math.PI * 0.5)
 
     // Update controls
     // controls.update()
