@@ -9,7 +9,7 @@ import gsap from 'gsap';
  */
 
 const gui = new dat.GUI();
-gui.hide()
+// gui.hide()
 
 
 /**
@@ -18,9 +18,7 @@ gui.hide()
 // Canvas
 const canvas = document.querySelector('canvas.webgl')
 
-const textureLoader = new THREE.TextureLoader();
-
-const particleTexture = textureLoader.load('/textures/particles/3.png');
+// const textureLoader = new THREE.TextureLoader();
 
 // Scene
 const scene = new THREE.Scene()
@@ -30,67 +28,85 @@ const material = new THREE.MeshStandardMaterial({
 });
 
 const geometry = new THREE.BoxGeometry(1, 1, 1);
-const particlesMaterial = new THREE.PointsMaterial({
-    size: 0.05,
-    sizeAttenuation: true
-})
-particlesMaterial.transparent = true
-particlesMaterial.alphaMap = particleTexture
-particlesMaterial.vertexColors = true
 
-// custom particles geometry
-const particlesGeometry = new THREE.BufferGeometry();
-const count = 1000000;
 
-const positions = new Float32Array(count * 3);
-const colors = new Float32Array(count * 3)
+//#region particles
+let particlesMaterial = null;
+let particlesGeometry = null;
+let particles = null;
+let particles1 = null;
 
-// particles position & color generator
-const blueRaspberry = [65, 90, 128];
-const enamelBlue = [165, 212, 220];
+const particlesParams = {
+    count: 32000,
+    rightColor: '#fbbc58',
+    leftColor: '#095d6a',
+    interpolation: 11
+};
 
-let firstColor = true;
-let colorI = 0;
+const generateParticles = (particlesPosition, particlesPosition1) => {
 
-const particleColorDecider = bool => bool ? blueRaspberry : enamelBlue;
-
-// let yPosition = 2;
-// if (i === yPosition) {
-//     positions[i] = (Math.random() - 0.5)
-//     yPosition += 3;
-// } else {
-//     positions[i] = (Math.random() - 0.5) * 3.6
-// }
-
-for (let i = 0; i < count * 3; i++) {
-
-    positions[i] = (Math.random() - 0.5) * 200
-
-    // color
-    if (colorI > 2) {
-        colorI = 0;
-        firstColor = !firstColor;
+    if (particles) {
+        particlesMaterial.dispose();
+        particlesGeometry.dispose();
+        scene.remove(particles)
     }
 
-    colors[i] = particleColorDecider(firstColor)[colorI] / 255
+    particlesGeometry = new THREE.BufferGeometry();
 
-    colorI++;
+    const positions = new Float32Array(particlesParams.count * 3);
+    const colors = new Float32Array(particlesParams.count * 3)
+
+
+    const rightColor = new THREE.Color(particlesParams.rightColor);
+    const leftColor = new THREE.Color(particlesParams.leftColor);
+
+
+
+    for (let i = 0; i < particlesParams.count; i++) {
+        const i3 = i * 3;
+
+        const interpolation = Math.random() * particlesParams.interpolation
+
+        const mixedColor = rightColor.clone();
+        mixedColor.lerp(leftColor, interpolation / particlesParams.interpolation)
+
+        positions[i3] = (Math.random() - 0.5) * 3.6;
+        positions[i3 + 1] = (Math.random() - 0.5);
+        positions[i3 + 2] = (Math.random() - 0.5) * 3.6;
+
+        colors[i3] = mixedColor.r;
+        colors[i3 + 1] = mixedColor.g;
+        colors[i3 + 2] = mixedColor.b;
+    }
+
+    particlesMaterial = new THREE.PointsMaterial({
+        size: 0.03,
+        sizeAttenuation: true,
+        vertexColors: true,
+        depthWrite: false,
+    });
+
+    particlesGeometry.setAttribute('position', new THREE.BufferAttribute(positions, 3))
+    particlesGeometry.setAttribute('color', new THREE.BufferAttribute(colors, 3))
+
+
+    particles = new THREE.Points(particlesGeometry, particlesMaterial)
+    particles.position.set(...particlesPosition)
+    particles1 = new THREE.Points(particlesGeometry, particlesMaterial);
+    particles1.position.set(...particlesPosition1)
+
+
+    scene.add(particles, particles1)
 }
 
+generateParticles([0, -1.25, 0], [0, 1.25, 0])
+// generateParticles([0, 1.25, 0])
 
-particlesGeometry.setAttribute('position', new THREE.BufferAttribute(positions, 3))
-particlesGeometry.setAttribute('color', new THREE.BufferAttribute(colors, 3))
-
-// Points
-const particles1 = new THREE.Points(particlesGeometry, particlesMaterial)
-particles1.position.set(0, -1.25, 0)
-particles1.rotation.x = Math.PI / 2
-
-const particles2 = new THREE.Points(particlesGeometry, particlesMaterial)
-particles2.position.set(0, 1.25, 0)
-particles2.rotation.x = Math.PI / 2
-
-scene.add(particles1, particles2)
+gui.add(particlesParams, 'count').min(10000).max(100000).step(100).onFinishChange(() => generateParticles([0, -1.25, 0], [0, 1.25, 0]));
+gui.addColor(particlesParams, 'rightColor').onFinishChange(() => generateParticles([0, -1.25, 0], [0, 1.25, 0]))
+gui.addColor(particlesParams, 'leftColor').onFinishChange(() => generateParticles([0, -1.25, 0], [0, 1.25, 0]))
+gui.add(particlesParams, 'interpolation').min(0).max(10).step(0.05).onFinishChange(() => generateParticles([0, -1.25, 0], [0, 1.25, 0]))
+//#endregion
 
 
 const facesDictionary = {
@@ -275,28 +291,6 @@ renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
 
 
 const clock = new THREE.Clock()
-
-let yPosition = 2;
-
-
-// setTimeout(() => {
-
-// }, 2000)
-
-const newParticlesPosition = new Float32Array(count * 3);
-
-for (let i = 0; i < count * 3; i++) {
-    if (i === yPosition) {
-        newParticlesPosition[i] = (Math.random() - 0.5)
-        yPosition += 3;
-    } else {
-        newParticlesPosition[i] = (Math.random() - 0.5) * 3.6
-    }
-}
-gsap.delayedCall(2, () => {
-    particlesGeometry.attributes.position.needsUpdate = true;
-    particlesGeometry.setAttribute('position', new THREE.BufferAttribute(newParticlesPosition, 3))
-})
 
 const tick = () => {
     const elapsedTime = clock.getElapsedTime();
