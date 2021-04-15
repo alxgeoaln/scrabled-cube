@@ -295,9 +295,9 @@ const clock = new THREE.Clock()
 const tick = () => {
     const elapsedTime = clock.getElapsedTime();
 
-    // level1XGroup.rotation.y = elapsedTime * Math.PI * 0.5
-    // level2XGroup.rotation.y = -(elapsedTime * Math.PI * 0.5)
-    // level3XGroup.rotation.y = elapsedTime * Math.PI * 0.5
+    level1XGroup.rotation.y = elapsedTime * Math.PI * 0.5
+    level2XGroup.rotation.y = -(elapsedTime * Math.PI * 0.5)
+    level3XGroup.rotation.y = elapsedTime * Math.PI * 0.5
 
     gsap.to(camera.position, {
         duration: 1,
@@ -327,7 +327,7 @@ const tick = () => {
             let colI = -1;
             for (let col = 0; col < 3; col++) {
                 const cube = matrix[level][row][col];
-                // cube.rotation.x = elapsedTime * Math.PI * 0.5;
+                cube.rotation.x = elapsedTime * Math.PI * 0.5;
 
                 gsap.to(cube.position, {
                     duration: 2,
@@ -355,7 +355,7 @@ const tick = () => {
     }
 
 
-    // dancingCube.rotation.z = -(elapsedTime * Math.PI * 0.5)
+    dancingCube.rotation.z = -(elapsedTime * Math.PI * 0.5)
 
     // Update controls
     // controls.update()
