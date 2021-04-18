@@ -4,6 +4,9 @@ import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 import * as dat from 'dat.gui';
 import gsap from 'gsap';
 
+import cubeVertexShader from './shaders/cubeShader/vertex.glsl';
+import cubeFragmentShader from './shaders/cubeShader/fragment.glsl';
+
 /**
  * Debug
  */
@@ -22,13 +25,6 @@ const canvas = document.querySelector('canvas.webgl')
 
 // Scene
 const scene = new THREE.Scene()
-
-const material = new THREE.MeshStandardMaterial({
-    vertexColors: THREE.FaceColors
-});
-
-const geometry = new THREE.BoxGeometry(1, 1, 1);
-
 
 //#region particles
 let particlesMaterial = null;
@@ -99,7 +95,7 @@ const generateParticles = (particlesPosition, particlesPosition1) => {
     scene.add(particles, particles1)
 }
 
-generateParticles([0, -1.25, 0], [0, 1.25, 0])
+// generateParticles([0, -1.25, 0], [0, 1.25, 0])
 // generateParticles([0, 1.25, 0])
 
 gui.add(particlesParams, 'count').min(10000).max(100000).step(100).onFinishChange(() => generateParticles([0, -1.25, 0], [0, 1.25, 0]));
@@ -107,6 +103,66 @@ gui.addColor(particlesParams, 'rightColor').onFinishChange(() => generateParticl
 gui.addColor(particlesParams, 'leftColor').onFinishChange(() => generateParticles([0, -1.25, 0], [0, 1.25, 0]))
 gui.add(particlesParams, 'interpolation').min(0).max(10).step(0.05).onFinishChange(() => generateParticles([0, -1.25, 0], [0, 1.25, 0]))
 //#endregion
+
+//#region generate cubes
+const geometry = new THREE.SphereBufferGeometry(5, 5, 20);
+
+const count = geometry.attributes.position.count;
+
+console.log('couuuunt', count);
+
+const randoms = new Float32Array(count);
+
+for (let i = 0; i < count; i++) {
+    randoms[i] = Math.random();
+}
+
+geometry.setAttribute('aRandom', new THREE.BufferAttribute(randoms, 1))
+
+const material = new THREE.RawShaderMaterial({
+    fragmentShader: cubeFragmentShader,
+    vertexShader: cubeVertexShader,
+    transparent: true
+    // wireframe: true
+});
+
+const generateCube = () => {
+    const boxFrontFace = new THREE.Mesh(geometry, material);
+
+    const boxRightFace = new THREE.Mesh(geometry, material);
+    boxRightFace.position.x = 2.5;
+    boxRightFace.position.z = -2.5;
+    boxRightFace.rotation.y = Math.PI / 2;
+
+
+    const boxLeftFace = new THREE.Mesh(geometry, material);
+    boxLeftFace.rotation.y = Math.PI / 2;
+    boxLeftFace.position.x = -2.5;
+    boxLeftFace.position.z = -2.5;
+
+    const boxBackFace = new THREE.Mesh(geometry, material);
+    boxBackFace.position.z = -1;
+
+    const boxUpFace = new THREE.Mesh(geometry, material);
+    boxUpFace.position.y = 2.5;
+    boxUpFace.position.z = -2.5;
+    boxUpFace.rotation.x = -Math.PI / 2;
+
+    const boxDownFace = new THREE.Mesh(geometry, material);
+    boxDownFace.position.y = -2.5;
+    boxDownFace.position.z = -2.5;
+    boxDownFace.rotation.x = -Math.PI / 2;
+
+    const boxGroup = new THREE.Group();
+    boxGroup.add(
+        boxFrontFace,
+        //  boxRightFace, boxLeftFace, boxBackFace, boxUpFace, boxDownFace
+         )
+
+    scene.add(boxGroup);
+}
+
+generateCube();
 
 
 const facesDictionary = {
@@ -181,31 +237,33 @@ const addInLevels = (mesh, level) => {
 
 const matrix = [];
 
-for (let level = -1; level < 2; level++) {
-    const lvl = [];
-    for (let row = -1; row < 2; row++) {
-        const column = [];
-        for (let col = -1; col < 2; col++) {
-            const mesh = new THREE.Mesh(geometry, material);
-            mesh.position.y = level * (Math.random() * 20);
-            mesh.position.z = row * (Math.random() * 20);
-            mesh.position.x = col * (Math.random() * 20);
+// for (let level = -1; level < 2; level++) {
+//     const lvl = [];
+//     for (let row = -1; row < 2; row++) {
+//         const column = [];
+//         for (let col = -1; col < 2; col++) {
+//             const mesh = new THREE.Mesh(geometry, material);
+//             mesh.position.y = level * (Math.random() * 20);
+//             mesh.position.z = row * (Math.random() * 20);
+//             mesh.position.x = col * (Math.random() * 20);
 
-            faceColorPlacement(mesh);
+//             // faceColorPlacement(mesh);
 
-            column.push(mesh);
+//             column.push(mesh);
 
-            addInLevels(mesh, level);
-        }
-        lvl.push(column);
-    }
-    matrix.push(lvl);
-}
+//             addInLevels(mesh, level);
+//         }
+//         lvl.push(column);
+//     }
+//     matrix.push(lvl);
+// }
 
 dancingCube.add(level1XGroup, level2XGroup, level3XGroup)
 
 scene.add(dancingCube)
+//#endregion
 
+//#region datCube
 const lvl1 = gui.addFolder('lvl1')
 
 lvl1.add(level1XGroup.position, 'x').min(0).max(2).step(1)
@@ -218,6 +276,7 @@ lvl2.add(level2XGroup.rotation, 'y').min(0).max(Math.PI * 2).step(Math.PI / 4).n
 
 const lvl3 = gui.addFolder('lvl3');
 lvl3.add(level3XGroup.rotation, 'y').min(0).max(Math.PI * 2).step(Math.PI / 4).name('rotationY')
+//#endregion
 
 /**
  * Sizes
@@ -288,16 +347,14 @@ renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
 /**
  * Animate
  */
-
-
 const clock = new THREE.Clock()
 
 const tick = () => {
     const elapsedTime = clock.getElapsedTime();
 
-    level1XGroup.rotation.y = elapsedTime * Math.PI * 0.5
-    level2XGroup.rotation.y = -(elapsedTime * Math.PI * 0.5)
-    level3XGroup.rotation.y = elapsedTime * Math.PI * 0.5
+    // level1XGroup.rotation.y = elapsedTime * Math.PI * 0.5
+    // level2XGroup.rotation.y = -(elapsedTime * Math.PI * 0.5)
+    // level3XGroup.rotation.y = elapsedTime * Math.PI * 0.5
 
     gsap.to(camera.position, {
         duration: 1,
@@ -320,45 +377,45 @@ const tick = () => {
 
 
 
-    let levelI = -1;
-    for (let level = 0; level < 3; level++) {
-        let rowI = -1;
-        for (let row = 0; row < 3; row++) {
-            let colI = -1;
-            for (let col = 0; col < 3; col++) {
-                const cube = matrix[level][row][col];
-                cube.rotation.x = elapsedTime * Math.PI * 0.5;
+    // let levelI = -1;
+    // for (let level = 0; level < 3; level++) {
+    //     let rowI = -1;
+    //     for (let row = 0; row < 3; row++) {
+    //         let colI = -1;
+    //         for (let col = 0; col < 3; col++) {
+    //             const cube = matrix[level][row][col];
+    //             // cube.rotation.x = elapsedTime * Math.PI * 0.5;
 
-                gsap.to(cube.position, {
-                    duration: 2,
-                    delay: .5,
-                    x: colI * 1.2
-                });
+    //             gsap.to(cube.position, {
+    //                 duration: 2,
+    //                 delay: .5,
+    //                 x: colI * 1.2
+    //             });
 
-                gsap.to(cube.position, {
-                    duration: 2,
-                    delay: .5,
-                    y: levelI * 2.5
-                });
+    //             gsap.to(cube.position, {
+    //                 duration: 2,
+    //                 delay: .5,
+    //                 y: levelI * 2.5
+    //             });
 
-                gsap.to(cube.position, {
-                    duration: 2,
-                    delay: .5,
-                    z: rowI * 1.2
-                });
+    //             gsap.to(cube.position, {
+    //                 duration: 2,
+    //                 delay: .5,
+    //                 z: rowI * 1.2
+    //             });
 
-                colI++;
-            }
-            rowI++;
-        }
-        levelI++
-    }
+    //             colI++;
+    //         }
+    //         rowI++;
+    //     }
+    //     levelI++
+    // }
 
 
-    dancingCube.rotation.z = -(elapsedTime * Math.PI * 0.5)
+    // dancingCube.rotation.z = -(elapsedTime * Math.PI * 0.5)
 
     // Update controls
-    // controls.update()
+    controls.update()
 
     // Render
     renderer.render(scene, camera)
